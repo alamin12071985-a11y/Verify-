@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SECURE VERIFY PROTOCOL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-green: #0f0;
+            --dark-bg: #0d0d0d;
+            --panel-bg: #111;
+            --border-color: #333;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--dark-bg);
+            color: var(--neon-green);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            text-shadow: 0 0 5px var(--neon-green);
+        }
+
+        /* Hacker Rain Background Effect */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            opacity: 0.15;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 400px;
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid var(--neon-green);
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.1);
+            text-align: center;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .status-box {
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* Buttons */
+        button {
+            background: transparent;
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            padding: 12px 24px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: var(--neon-green);
+            color: #000;
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        button:disabled {
+            border-color: #555;
+            color: #555;
+            cursor: not-allowed;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        /* Terminal Loading Animation */
+        .loader {
+            display: none;
+            text-align: left;
+            width: 100%;
+        }
+        
+        .terminal-text {
+            overflow: hidden;
+            border-right: .15em solid var(--neon-green);
+            white-space: nowrap;
+            animation: typing 3s steps(40, end), blink-caret .75s step-end infinite;
+        }
+
+        @keyframes typing { from { width: 0 } to { width: 100% } }
+        @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: var(--neon-green); } }
+
+        .success-text { color: #0f0; font-size: 1.2rem; font-weight: bold; }
+        .error-text { color: #f00; text-shadow: 0 0 5px #f00; }
+        
+        .hidden { display: none; }
+        
+        /* Scanline effect */
+        .scanlines::before {
+            content: " ";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; margin-bottom: 5px; font-size: 0.8rem; color: #888; }
+        .input-group input { 
+            width: 100%; 
+            background: #000; 
+            border: 1px solid #333; 
+            color: #0f0; 
+            padding: 8px; 
+            font-family: 'Share Tech Mono', monospace;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Matrix Rain Background -->
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="container scanlines">
+        <h1 id="header-title">System Verification</h1>
+
+        <!-- Step 1: Input & Button -->
+        <div id="step-init">
+            <div class="status-box">
+                <p>SECURITY PROTOCOL ACTIVE.<br>AWAITING USER INPUT.</p>
+            </div>
+            
+            <!-- Inputs for Testing. In Real Telegram App, hide these and use tg.initData -->
+            <div class="input-group">
+                <label>User ID:</label>
+                <input type="text" id="inputUserId" value="432189765">
+            </div>
+            <div class="input-group">
+                <label>Bot Username:</label>
+                <input type="text" id="inputBot" value="MySecureBot">
+            </div>
+            <div class="input-group">
+                <label>Session Hash:</label>
+                <input type="text" id="inputHash" value="sess_x9z1lmnop34">
+            </div>
+
+            <button id="btn-verify" onclick="startVerification()">[ INITIATE VERIFY ]</button>
+        </div>
+
+        <!-- Step 2: Processing -->
+        <div id="step-processing" class="hidden">
+            <div class="status-box">
+                <div class="loader">
+                    <div class="terminal-text" id="terminal-log">Analyzing device fingerprint...</div>
+                </div>
+                <p id="log-details" style="font-size: 0.8rem; margin-top: 10px; color: #aaa;"></p>
+            </div>
+        </div>
+
+        <!-- Step 3: Result -->
+        <div id="step-result" class="hidden">
+            <div class="status-box">
+                <p id="result-message"></p>
+            </div>
+            <button id="btn-back" onclick="resetUI()">[ BACK ]</button>
+        </div>
+    </div>
+
+    <!-- FingerprintJS Library for Advanced Device ID -->
+    <script src="https://openfpcdn.io/fingerprintjs/v4"></script>
+
+    <script>
+        // 1. Matrix Rain Background Animation
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        const letters = "010101010101ABCDEF@#$%^&*SYSTEM";
+        const fontSize = 10;
+        const columns = canvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#0F0";
+            ctx.font = fontSize + "px arial";
+            
+            for (let i = 0; i < drops.length; i++) {
+                const text = letters.charAt(Math.floor(Math.random() * letters.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 33);
+
+        // 2. Fingerprint Generation
+        async function getDeviceFingerprint() {
+            try {
+                const fp = await FingerprintJS.load();
+                const result = await fp.get();
+                return result.visitorId; // Unique Browser ID
+            } catch (e) {
+                console.error("Fingerprint error", e);
+                return "fallback_" + navigator.userAgent.replace(/\D/g, '');
+            }
+        }
+
+        // 3. UI Logic
+        function showStep(stepId) {
+            document.querySelectorAll('[id^="step-"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById(stepId).classList.remove('hidden');
+        }
+
+        async function startVerification() {
+            const btn = document.getElementById('btn-verify');
+            btn.disabled = true;
+
+            // Get Input Data
+            const user_id = document.getElementById('inputUserId').value;
+            const bot = document.getElementById('inputBot').value;
+            const botHash = document.getElementById('inputHash').value;
+
+            if (!user_id || !bot || !botHash) {
+                alert("Missing parameters");
+                btn.disabled = false;
+                return;
+            }
+
+            // Switch to Processing UI
+            showStep('step-processing');
+            const terminal = document.getElementById('terminal-log');
+            const logDetails = document.getElementById('log-details');
+
+            // Animation Sequence
+            await delay(100);
+            terminal.innerHTML = "Establishing secure connection...";
+            await delay(800);
+            terminal.innerHTML = "Scanning device hardware...";
+            
+            // Generate Fingerprint during animation
+            const fingerprint = await getDeviceFingerprint();
+            logDetails.innerHTML = `ID: ${fingerprint.substring(0, 8)}...<br>Checking database...`;
+            
+            await delay(1000);
+            terminal.innerHTML = "Verifying credentials...";
+
+            // Call Worker API
+            try {
+                const response = await fetch('/api/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: user_id,
+                        bot: bot,
+                        botHash: botHash,
+                        device_fingerprint: fingerprint // Send Fingerprint to Server
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Show Result
+                showStep('step-result');
+                const resultMsg = document.getElementById('result-message');
+                
+                if (data.status === 'success') {
+                    document.getElementById('header-title').innerHTML = "ACCESS GRANTED";
+                    resultMsg.innerHTML = `<span class="success-text">VERIFY SUCCESS</span><br>User: ${user_id}<br>Status: Confirmed`;
+                } else {
+                    document.getElementById('header-title').innerHTML = "ACCESS DENIED";
+                    resultMsg.innerHTML = `<span class="error-text">VERIFY FAILED</span><br>Reason: ${data.message}`;
+                }
+
+            } catch (err) {
+                showStep('step-result');
+                document.getElementById('header-title').innerHTML = "ERROR";
+                document.getElementById('result-message').innerHTML = `<span class="error-text">CONNECTION ERROR</span><br>${err.message}`;
+            }
+        }
+
+        function resetUI() {
+            document.getElementById('header-title').innerHTML = "System Verification";
+            document.getElementById('btn-verify').disabled = false;
+            showStep('step-init');
+        }
+
+        function delay(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+    </script>
+</body>
+</html>
