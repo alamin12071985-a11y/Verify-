@@ -5,4 +5,4 @@ pages_build_output_dir = "."
 [[d1_databases]]
 binding = "DB"
 database_name = "verify_db"
-database_id = "YOUR_D1_DATABASE_ID_HERE"
+database_id = "93089b7c-9176-47fe-93e9-5b65add3afed"
