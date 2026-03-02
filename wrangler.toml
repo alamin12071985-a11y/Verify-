@@ -1,8 +1,0 @@
-name = "hacker-verify-system"
-compatibility_date = "2024-04-05"
-pages_build_output_dir = "."
-
-[[d1_databases]]
-binding = "DB"
-database_name = "secure_verify_db"
-database_id = "PUT_YOUR_D1_DATABASE_ID_HERE"
