@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VERIFICATION TERMINAL</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-tertiary: #1a1a1a;
+      --accent: #00ff41;
+      --accent-dim: #00cc33;
+      --accent-glow: rgba(0, 255, 65, 0.3);
+      --text-primary: #e0e0e0;
+      --text-muted: #666666;
+      --border: #2a2a2a;
+      --error: #ff3333;
+      --error-glow: rgba(255, 51, 51, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Scanline effect */
+    .scanlines::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.1) 2px,
+        rgba(0, 0, 0, 0.1) 4px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    /* CRT glow effect */
+    .crt-glow {
+      animation: crtGlow 4s ease-in-out infinite;
+    }
+
+    @keyframes crtGlow {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.02); }
+    }
+
+    /* Matrix rain background */
+    #matrix-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      opacity: 0.15;
+    }
+
+    /* Terminal container */
+    .terminal {
+      position: relative;
+      z-index: 10;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 
+        0 0 0 1px rgba(0, 255, 65, 0.1),
+        0 20px 60px rgba(0, 0, 0, 0.8),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    .terminal-header {
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .terminal-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* Typing cursor */
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      height: 1.2em;
+      background: var(--accent);
+      margin-left: 2px;
+      animation: blink 1s step-end infinite;
+      vertical-align: text-bottom;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+
+    /* Text glow */
+    .text-glow {
+      text-shadow: 0 0 10px var(--accent-glow), 0 0 20px var(--accent-glow);
+    }
+
+    .error-glow {
+      text-shadow: 0 0 10px var(--error-glow), 0 0 20px var(--error-glow);
+    }
+
+    /* Buttons */
+    .btn-terminal {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 12px 32px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 14px;
+      letter-spacing: 2px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .btn-terminal::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn-terminal:hover::before {
+      left: 100%;
+    }
+
+    .btn-terminal:hover {
+      background: var(--accent);
+      color: var(--bg-primary);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .btn-terminal:active {
+      transform: scale(0.98);
+    }
+
+    .btn-terminal:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Input fields */
+    .input-terminal {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      padding: 12px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      width: 100%;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .input-terminal:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .input-terminal::placeholder {
+      color: var(--text-muted);
+    }
+
+    /* Processing animation */
+    .processing-dots::after {
+      content: '';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+
+    /* Status icons */
+    .status-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto;
+    }
+
+    .status-success {
+      border: 3px solid var(--accent);
+      box-shadow: 0 0 30px var(--accent-glow);
+      animation: pulse-success 2s ease-in-out infinite;
+    }
+
+    .status-fail {
+      border: 3px solid var(--error);
+      box-shadow: 0 0 30px var(--error-glow);
+      animation: pulse-fail 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-success {
+      0%, 100% { box-shadow: 0 0 30px var(--accent-glow); }
+      50% { box-shadow: 0 0 50px var(--accent-glow), 0 0 80px var(--accent-glow); }
+    }
+
+    @keyframes pulse-fail {
+      0%, 100% { box-shadow: 0 0 30px var(--error-glow); }
+      50% { box-shadow: 0 0 50px var(--error-glow), 0 0 80px var(--error-glow); }
+    }
+
+    /* Fade transitions */
+    .fade-in {
+      animation: fadeIn 0.5s ease forwards;
+    }
+
+    .fade-out {
+      animation: fadeOut 0.3s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-20px); }
+    }
+
+    /* Progress bar */
+    .progress-bar {
+      height: 2px;
+      background: var(--border);
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* Data lines */
+    .data-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-line:last-child {
+      border-bottom: none;
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Mobile adjustments */
+    @media (max-width: 640px) {
+      .terminal {
+        margin: 16px;
+      }
+    }
+  </style>
+</head>
+<body class="scanlines crt-glow">
+  <!-- Matrix rain background -->
+  <canvas id="matrix-bg"></canvas>
+
+  <!-- Main container -->
+  <div class="min-h-screen flex flex-col items-center justify-center p-4">
+    
+    <!-- Terminal window -->
+    <div class="terminal w-full max-w-lg" style="opacity: 0; animation: fadeIn 0.8s ease 0.3s forwards;">
+      
+      <!-- Terminal header -->
+      <div class="terminal-header">
+        <div class="terminal-dot bg-red-500"></div>
+        <div class="terminal-dot bg-yellow-500"></div>
+        <div class="terminal-dot" style="background: var(--accent);"></div>
+        <span class="ml-4 text-sm" style="color: var(--text-muted);">verification_v2.4.1 — bash</span>
+      </div>
+
+      <!-- Terminal content -->
+      <div class="p-6">
+        
+        <!-- Initial state: Verification form -->
+        <div id="state-form" class="space-y-6">
+          <div class="mb-6">
+            <p class="text-xs mb-2" style="color: var(--text-muted);">$ ./verify --init</p>
+            <h1 class="text-2xl font-bold text-glow" style="color: var(--accent); font-family: 'Share Tech Mono', monospace;">
+              VERIFICATION TERMINAL<span class="cursor"></span>
+            </h1>
+          </div>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs mb-2" style="color: var(--text-muted);">
+                > USER_ID
+              </label>
+              <input 
+                type="text" 
+                id="input-user-id" 
+                class="input-terminal"
+                placeholder="Enter Telegram User ID"
+                autocomplete="off"
+              >
+            </div>
+
+            <div>
+              <label class="block text-xs mb-2" style="color: var(--text-muted);">
+                > BOT_HASH (34 chars)
+              </label>
+              <input 
+                type="text" 
+                id="input-bot-hash" 
+                class="input-terminal"
+                placeholder="Enter session hash"
+                maxlength="34"
+                autocomplete="off"
+              >
+            </div>
+
+            <div>
+              <label class="block text-xs mb-2" style="color: var(--text-muted);">
+                > BOT_USERNAME
+              </label>
+              <input 
+                type="text" 
+                id="input-bot" 
+                class="input-terminal"
+                placeholder="@bot_username"
+                autocomplete="off"
+              >
+            </div>
+          </div>
+
+          <!-- Device info preview -->
+          <div class="mt-6 p-4 text-xs" style="background: var(--bg-primary); border: 1px solid var(--border);">
+            <p style="color: var(--text-muted);">$ device_info --scan</p>
+            <div class="mt-2 space-y-1">
+              <p><span style="color: var(--accent);">TIMEZONE:</span> <span id="preview-timezone">detecting...</span></p>
+              <p><span style="color: var(--accent);">SCREEN:</span> <span id="preview-screen">detecting...</span></p>
+              <p><span style="color: var(--accent);">PLATFORM:</span> <span id="preview-platform">detecting...</span></p>
+            </div>
+          </div>
+
+          <button id="btn-verify" class="btn-terminal w-full mt-4">
+            [ EXECUTE VERIFICATION ]
+          </button>
+        </div>
+
+        <!-- Processing state -->
+        <div id="state-processing" class="hidden text-center py-8">
+          <div class="spinner mx-auto mb-6"></div>
+          <p class="text-lg text-glow" style="color: var(--accent);">
+            PROCESSING<span class="processing-dots"></span>
+          </p>
+          <div class="progress-bar mt-4">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+          <p class="text-xs mt-4" style="color: var(--text-muted);">
+            Analyzing device fingerprint...
+          </p>
+        </div>
+
+        <!-- Success state -->
+        <div id="state-success" class="hidden text-center py-4">
+          <div class="status-icon status-success mx-auto mb-6">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--accent);">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold text-glow mb-2" style="color: var(--accent); font-family: 'Share Tech Mono', monospace;">
+            VERIFICATION COMPLETE
+          </h2>
+          <p class="text-sm mb-6" style="color: var(--text-muted);">
+            Access granted. Proceed to application.
+          </p>
+          
+          <div class="text-left p-4 mb-6" style="background: var(--bg-primary); border: 1px solid var(--border);">
+            <p class="text-xs mb-3" style="color: var(--text-muted);">$ user_data --output</p>
+            <div class="data-line">
+              <span style="color: var(--accent);">USER_ID</span>
+              <span id="result-user-id">—</span>
+            </div>
+            <div class="data-line">
+              <span style="color: var(--accent);">STATUS</span>
+              <span style="color: var(--accent);">VERIFIED</span>
+            </div>
+            <div class="data-line">
+              <span style="color: var(--accent);">TIMESTAMP</span>
+              <span id="result-timestamp">—</span>
+            </div>
+          </div>
+
+          <button id="btn-back-success" class="btn-terminal w-full">
+            [ CLOSE TERMINAL ]
+          </button>
+        </div>
+
+        <!-- Fail state -->
+        <div id="state-fail" class="hidden text-center py-4">
+          <div class="status-icon status-fail mx-auto mb-6">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--error);">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </div>
+          <h2 class="text-xl font-bold error-glow mb-2" style="color: var(--error); font-family: 'Share Tech Mono', monospace;">
+            VERIFICATION FAILED
+          </h2>
+          <p id="fail-message" class="text-sm mb-6" style="color: var(--text-muted);">
+            An error occurred during verification.
+          </p>
+          
+          <div class="text-left p-4 mb-6" style="background: var(--bg-primary); border: 1px solid var(--border);">
+            <p class="text-xs mb-3" style="color: var(--text-muted);">$ error_log --read</p>
+            <p id="error-details" class="text-xs" style="color: var(--error);">
+              No additional details available.
+            </p>
+          </div>
+
+          <button id="btn-back-fail" class="btn-terminal w-full" style="border-color: var(--error); color: var(--error);">
+            [ RETRY VERIFICATION ]
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-8 text-center" style="opacity: 0; animation: fadeIn 0.8s ease 0.6s forwards;">
+      <p class="text-xs" style="color: var(--text-muted);">
+        SECURE CONNECTION • END-TO-END ENCRYPTED
+      </p>
+    </div>
+
+  </div>
+
+  <script>
+    // ============================================
+    // INITIALIZATION - All variables declared first
+    // ============================================
+    
+    const API_BASE = window.location.origin;
+    
+    // DOM Elements - initialized after DOM ready
+    let stateForm = null;
+    let stateProcessing = null;
+    let stateSuccess = null;
+    let stateFail = null;
+    let inputUserId = null;
+    let inputBotHash = null;
+    let inputBot = null;
+    let btnVerify = null;
+    let btnBackSuccess = null;
+    let btnBackFail = null;
+    let progressFill = null;
+    let previewTimezone = null;
+    let previewScreen = null;
+    let previewPlatform = null;
+    let resultUserId = null;
+    let resultTimestamp = null;
+    let failMessage = null;
+    let errorDetails = null;
+
+    // Device info
+    const deviceInfo = {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown',
+      screen: `${screen.width}x${screen.height}`,
+      platform: navigator.platform || 'unknown',
+      language: navigator.language || 'unknown',
+      cookiesEnabled: navigator.cookieEnabled ? 'yes' : 'no'
+    };
+
+    // ============================================
+    // MATRIX RAIN BACKGROUND
+    // ============================================
+    
+    function initMatrixRain() {
+      const canvas = document.getElementById('matrix-bg');
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      function resizeCanvas() {
+        canvas.width = Math.max(1, window.innerWidth);
+        canvas.height = Math.max(1, window.innerHeight);
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      const chars = 'ABCDEF0123456789';
+      const fontSize = 14;
+      const columns = Math.max(1, Math.floor(canvas.width / fontSize));
+      const drops = new Array(columns).fill(1);
+
+      function draw() {
+        ctx.fillStyle = 'rgba(10, 10, 10, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#00ff41';
+        ctx.font = `${fontSize}px JetBrains Mono`;
+
+        for (let i = 0; i < drops.length; i++) {
+          const text = chars[Math.floor(Math.random() * chars.length)];
+          const x = Math.max(0, i * fontSize);
+          const y = Math.max(0, drops[i] * fontSize);
+          ctx.fillText(text, x, y);
+
+          if (y > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i]++;
+        }
+      }
+
+      setInterval(draw, 50);
+    }
+
+    // ============================================
+    // DEVICE FINGERPRINTING
+    // ============================================
+    
+    async function generateBrowserFingerprint() {
+      const components = [];
+      
+      // Screen info
+      components.push(`screen:${screen.width}x${screen.height}x${screen.colorDepth}`);
+      
+      // Timezone
+      components.push(`tz:${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
+      
+      // Platform
+      components.push(`platform:${navigator.platform}`);
+      
+      // Language
+      components.push(`lang:${navigator.language}`);
+      
+      // Canvas fingerprint
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          canvas.width = 200;
+          canvas.height = 50;
+          ctx.textBaseline = 'top';
+          ctx.font = '14px JetBrains Mono';
+          ctx.fillStyle = '#00ff41';
+          ctx.fillText('fingerprint', 2, 2);
+          components.push(`canvas:${canvas.toDataURL().slice(-50)}`);
+        }
+      } catch (e) {
+        components.push('canvas:blocked');
+      }
+
+      // WebGL info
+      try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (gl) {
+          const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+          if (debugInfo) {
+            components.push(`gl:${gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL).slice(0, 30)}`);
+          }
+        }
+      } catch (e) {
+        components.push('gl:blocked');
+      }
+
+      // Hash the components
+      const combined = components.join('|');
+      const encoder = new TextEncoder();
+      const data = encoder.encode(combined);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // ============================================
+    // STATE MANAGEMENT
+    // ============================================
+    
+    function showState(stateName) {
+      const states = ['state-form', 'state-processing', 'state-success', 'state-fail'];
+      
+      states.forEach(state => {
+        const el = document.getElementById(state);
+        if (el) {
+          if (state === stateName) {
+            el.classList.remove('hidden');
+            el.classList.add('fade-in');
+          } else {
+            el.classList.add('hidden');
+            el.classList.remove('fade-in');
+          }
+        }
+      });
+    }
+
+    function animateProgress() {
+      if (!progressFill) return;
+      
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) {
+          progress = 90;
+          clearInterval(interval);
+        }
+        progressFill.style.width = `${Math.min(100, Math.max(0, progress))}%`;
+      }, 200);
+      
+      return interval;
+    }
+
+    // ============================================
+    // API CALL
+    // ============================================
+    
+    async function verifyUser(userId, botHash, bot) {
+      // Get additional fingerprint
+      const browserFingerprint = await generateBrowserFingerprint();
+      
+      const payload = {
+        user_id: userId,
+        botHash: botHash,
+        bot: bot,
+        timezone: deviceInfo.timezone,
+        screen: deviceInfo.screen,
+        fingerprint: browserFingerprint
+      };
+
+      const response = await fetch(`${API_BASE}/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      return response.json();
+    }
+
+    // ============================================
+    // EVENT HANDLERS
+    // ============================================
+    
+    async function handleVerify() {
+      const userId = inputUserId ? inputUserId.value.trim() : '';
+      const botHash = inputBotHash ? inputBotHash.value.trim() : '';
+      const bot = inputBot ? inputBot.value.trim() : '';
+
+      // Validation
+      if (!userId) {
+        alert('Please enter a User ID');
+        return;
+      }
+
+      if (!botHash || botHash.length !== 34) {
+        alert('Bot Hash must be exactly 34 characters');
+        return;
+      }
+
+      if (!bot) {
+        alert('Please enter a Bot username');
+        return;
+      }
+
+      // Show processing state
+      showState('state-processing');
+      const progressInterval = animateProgress();
+
+      try {
+        const result = await verifyUser(userId, botHash, bot);
+        
+        // Complete progress
+        if (progressFill) {
+          progressFill.style.width = '100%';
+        }
+        clearInterval(progressInterval);
+
+        // Short delay for UX
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (result.status === 'success') {
+          // Update success state
+          if (resultUserId) resultUserId.textContent = userId;
+          if (resultTimestamp) resultTimestamp.textContent = new Date().toISOString();
+          showState('state-success');
+        } else {
+          // Update fail state
+          if (failMessage) failMessage.textContent = result.message || 'Verification failed.';
+          if (errorDetails) errorDetails.textContent = `Error: ${result.message}`;
+          showState('state-fail');
+        }
+
+      } catch (error) {
+        clearInterval(progressInterval);
+        console.error('Verification error:', error);
+        
+        if (failMessage) failMessage.textContent = 'Connection error. Please try again.';
+        if (errorDetails) errorDetails.textContent = `Network error: ${error.message}`;
+        showState('state-fail');
+      }
+    }
+
+    function handleBack() {
+      showState('state-form');
+      
+      // Clear inputs
+      if (inputUserId) inputUserId.value = '';
+      if (inputBotHash) inputBotHash.value = '';
+      if (inputBot) inputBot.value = '';
+      
+      // Reset progress
+      if (progressFill) progressFill.style.width = '0%';
+    }
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    
+    function updateDevicePreview() {
+      if (previewTimezone) previewTimezone.textContent = deviceInfo.timezone;
+      if (previewScreen) previewScreen.textContent = deviceInfo.screen;
+      if (previewPlatform) previewPlatform.textContent = deviceInfo.platform;
+    }
+
+    function initApp() {
+      // Initialize DOM references
+      stateForm = document.getElementById('state-form');
+      stateProcessing = document.getElementById('state-processing');
+      stateSuccess = document.getElementById('state-success');
+      stateFail = document.getElementById('state-fail');
+      inputUserId = document.getElementById('input-user-id');
+      inputBotHash = document.getElementById('input-bot-hash');
+      inputBot = document.getElementById('input-bot');
+      btnVerify = document.getElementById('btn-verify');
+      btnBackSuccess = document.getElementById('btn-back-success');
+      btnBackFail = document.getElementById('btn-back-fail');
+      progressFill = document.getElementById('progress-fill');
+      previewTimezone = document.getElementById('preview-timezone');
+      previewScreen = document.getElementById('preview-screen');
+      previewPlatform = document.getElementById('preview-platform');
+      resultUserId = document.getElementById('result-user-id');
+      resultTimestamp = document.getElementById('result-timestamp');
+      failMessage = document.getElementById('fail-message');
+      errorDetails = document.getElementById('error-details');
+
+      // Update device info preview
+      updateDevicePreview();
+
+      // Initialize matrix rain
+      initMatrixRain();
+
+      // Event listeners
+      if (btnVerify) {
+        btnVerify.addEventListener('click', handleVerify);
+      }
+
+      if (btnBackSuccess) {
+        btnBackSuccess.addEventListener('click', handleBack);
+      }
+
+      if (btnBackFail) {
+        btnBackFail.addEventListener('click', handleBack);
+      }
+
+      // Enter key to submit
+      [inputUserId, inputBotHash, inputBot].forEach(input => {
+        if (input) {
+          input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+              handleVerify();
+            }
+          });
+        }
+      });
+
+      console.log('%c[VERIFICATION SYSTEM INITIALIZED]', 'color: #00ff41; font-weight: bold;');
+    }
+
+    // Start app when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
+  </script>
+</body>
+</html>
